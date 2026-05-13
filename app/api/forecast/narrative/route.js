@@ -190,7 +190,7 @@ export async function POST(request) {
 
   try {
     const response = await client.messages.create({
-      model:         'claude-opus-4-7-20251101',
+      model:         'claude-opus-4-7',
       max_tokens:    2000,
       thinking:      { type: 'adaptive' },
       output_config: { effort: 'xhigh' },
