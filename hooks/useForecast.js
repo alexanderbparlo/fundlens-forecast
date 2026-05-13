@@ -7,7 +7,10 @@ const ACCEPTED_MIME_TYPES = [
   'text/csv',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]
-const MAX_SIZE_BYTES = 10 * 1024 * 1024
+// 3 MB per file keeps a single-file base64 payload (~4 MB) safely under
+// Vercel's 4.5 MB serverless body limit. Two files combined must also fit.
+const MAX_SIZE_BYTES = 3 * 1024 * 1024
+const MAX_COMBINED_SIZE_BYTES = 3 * 1024 * 1024
 
 async function parseUploadedFile(file) {
   if (file.type === 'application/pdf') {
@@ -39,7 +42,15 @@ function validateFile(file) {
     return 'Only PDF, Excel (.xlsx), and CSV files are accepted.'
   }
   if (file.size > MAX_SIZE_BYTES) {
-    return 'File must be under 10MB.'
+    return 'File must be under 3MB.'
+  }
+  return null
+}
+
+function validateCombinedSize(primary, secondary) {
+  const total = (primary?.size ?? 0) + (secondary?.size ?? 0)
+  if (total > MAX_COMBINED_SIZE_BYTES) {
+    return 'Combined file size must be under 3MB. Try uploading one file at a time.'
   }
   return null
 }
@@ -120,6 +131,14 @@ export function useForecast() {
   // Implemented in Step 3 — wires to /api/forecast/extract
   const extractFields = useCallback(async () => {
     if (!primaryFile) return
+
+    // Guard combined size before sending — avoids a silent Vercel 413
+    const combinedError = validateCombinedSize(primaryFile, secondaryFile)
+    if (combinedError) {
+      setExtractError(combinedError)
+      return
+    }
+
     setIsExtracting(true)
     setExtractError(null)
     try {
@@ -147,15 +166,23 @@ export function useForecast() {
         body: JSON.stringify(body),
       })
 
-      const json = await res.json()
+      let json
+      try {
+        json = await res.json()
+      } catch {
+        // Server returned non-JSON (504 timeout HTML, 413 body-too-large, etc.)
+        const msg =
+          res.status === 504
+            ? 'Extraction timed out. The document may be too complex — try again or use a shorter file.'
+            : res.status === 413
+            ? 'File too large for the server. Please use a file under 3MB.'
+            : `Server error (${res.status}). Please try again.`
+        setExtractError(msg)
+        console.error('Extract: non-JSON response', res.status)
+        return
+      }
 
       if (!res.ok || !json.success) {
-        // Step 3 implements the route — 501 expected until then
-        if (res.status === 501) {
-          console.info('Extract route not yet implemented (Step 3).')
-          setStep('confirm')
-          return
-        }
         setExtractError(json.error || 'Extraction failed. Please try again.')
         return
       }
