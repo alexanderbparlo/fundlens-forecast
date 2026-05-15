@@ -217,10 +217,11 @@ function InvestmentTable({ investmentProjections, currency }) {
 
 function StressTooltip({ active, payload, label, currency }) {
   if (!active || !payload?.length) return null
+  const value = payload[0]?.value
   return (
     <div className="card px-3 py-2">
       <p className="font-body text-xs text-text-secondary mb-1">{label}</p>
-      <p className="font-mono text-sm text-data-negative">{formatCurrency(payload[0]?.value, currency)}</p>
+      <p className={`font-mono text-sm ${value > 0 ? 'text-data-positive' : 'text-data-negative'}`}>{formatCurrency(value, currency)}</p>
     </div>
   )
 }
@@ -254,9 +255,15 @@ function StressChart({ factorBreakdown, currency }) {
           />
           <Bar
             dataKey="value" radius={[0, 2, 2, 0]}
-            fill="var(--data-negative)"
             isAnimationActive animationDuration={600} animationEasing="ease-out"
-          />
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={index}
+                fill={entry.value > 0 ? 'var(--data-positive)' : 'var(--data-negative)'}
+              />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -298,6 +305,7 @@ function StressView({ stressResults, currency }) {
               <tbody>
                 {factorBreakdown.map((f, i) => {
                   const hasImpact = f.impact !== 0
+                  const impactPos = f.impact > 0
                   const isLast = i === factorBreakdown.length - 1
                   return (
                     <tr key={f.factorKey} className={isLast ? '' : 'border-b border-border-subtle'}>
@@ -306,8 +314,8 @@ function StressView({ stressResults, currency }) {
                         {f.shock >= 0 ? '+' : ''}{f.shock}{f.unit}
                       </td>
                       <td className={`${TD} text-right text-text-secondary`}>{formatCurrency(f.mappedExposure, currency)}</td>
-                      <td className={`${TD} text-right ${hasImpact ? 'text-data-negative' : 'text-text-muted'}`}>{formatCurrency(f.impact, currency)}</td>
-                      <td className={`${TD} text-right ${hasImpact && f.impactPct ? 'text-data-negative' : 'text-text-muted'}`}>{fmtNaturalPct(f.impactPct)}</td>
+                      <td className={`${TD} text-right ${hasImpact ? (impactPos ? 'text-data-positive' : 'text-data-negative') : 'text-text-muted'}`}>{formatCurrency(f.impact, currency)}</td>
+                      <td className={`${TD} text-right ${hasImpact && f.impactPct != null ? (impactPos ? 'text-data-positive' : 'text-data-negative') : 'text-text-muted'}`}>{fmtNaturalPct(f.impactPct)}</td>
                     </tr>
                   )
                 })}
