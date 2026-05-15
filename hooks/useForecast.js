@@ -254,7 +254,16 @@ export function useForecast() {
   const goBack = useCallback(() => {
     const order = ['fund-type', 'upload', 'confirm', 'scenario', 'results']
     const idx = order.indexOf(step)
-    if (idx > 0) setStep(order[idx - 1])
+    if (idx > 0) {
+      if (step === 'results') {
+        // Clear analysis state so re-configuring scenarios triggers a fresh run
+        setAnalysisResults(null)
+        setAnalyzeError(null)
+        setNarrative(null)
+        setIsGeneratingNarrative(false)
+      }
+      setStep(order[idx - 1])
+    }
   }, [step])
 
   const clearExtractError = useCallback(() => {

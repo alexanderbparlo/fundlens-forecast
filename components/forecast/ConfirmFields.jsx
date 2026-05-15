@@ -15,7 +15,7 @@ function SourceDot({ source }) {
 
 // ── Field input (fund-level) ──────────────────────────────────────────────────
 
-function FieldInput({ label, fieldKey, value, source, type = 'text', required, placeholder, currency, onChange }) {
+function FieldInput({ label, fieldKey, value, source, type = 'text', required, placeholder, currency, money, onChange }) {
   const displayValue = value === null || value === undefined ? '' : String(value)
 
   function handleChange(e) {
@@ -25,7 +25,7 @@ function FieldInput({ label, fieldKey, value, source, type = 'text', required, p
     onChange(raw)
   }
 
-  const numForHint = type === 'number' && value !== null && value !== undefined ? Number(value) : null
+  const numForHint = money && type === 'number' && value !== null && value !== undefined ? Number(value) : null
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -95,8 +95,8 @@ const INV_COLUMNS = {
   'hedge-fund': [
     { key: 'name',               label: 'Position',        type: 'text',   w: 180 },
     { key: 'assetClassExposure', label: 'Exposure Type',   type: 'text',   w: 160 },
-    { key: 'marketValue',        label: 'Mkt Val ($)',      type: 'number', w: 128 },
     { key: 'costBasis',          label: 'Cost ($)',         type: 'number', w: 120 },
+    { key: 'marketValue',        label: 'Mkt Val ($)',      type: 'number', w: 128 },
   ],
   'real-assets': [
     { key: 'name',          label: 'Asset',          type: 'text',   w: 180 },
@@ -263,6 +263,7 @@ export function ConfirmFields({ fundType, extractedFields, onConfirm, onBack }) 
               required={f.required}
               placeholder={f.placeholder}
               currency={fund.currency}
+              money={f.money ?? false}
               onChange={(v) => handleFundChange(f.key, v)}
             />
           ))}
@@ -277,6 +278,7 @@ export function ConfirmFields({ fundType, extractedFields, onConfirm, onBack }) 
               required={f.required}
               placeholder={f.placeholder}
               currency={fund.currency}
+              money={f.money ?? false}
               onChange={(v) => handleFundChange(f.key, v)}
             />
           ))}
@@ -307,37 +309,65 @@ export function ConfirmFields({ fundType, extractedFields, onConfirm, onBack }) 
           <div className="flex items-center justify-center py-8 rounded-card border border-dashed border-border-subtle text-text-muted">
             <p className="font-body text-sm">No investments found — add rows manually if needed.</p>
           </div>
-        ) : (
-          <div className="overflow-x-auto rounded-card border border-border-subtle">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-surface-800">
-                  {columns.map(col => (
-                    <th
-                      key={col.key}
-                      className="px-2 py-2 font-mono text-data-sm text-text-label uppercase tracking-wider whitespace-nowrap"
-                      style={{ minWidth: col.w }}
-                    >
-                      {col.label}
-                    </th>
+        ) : (() => {
+          const totalCost = investments.reduce((s, inv) => s + (Number(inv.costBasis) || 0), 0)
+          const totalMV   = investments.reduce((s, inv) => s + (Number(inv.marketValue) || 0), 0)
+          const currency  = fund.currency ?? 'USD'
+          return (
+            <div className="overflow-x-auto rounded-card border border-border-subtle">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-surface-800">
+                    {columns.map(col => (
+                      <th
+                        key={col.key}
+                        className="px-2 py-2 font-mono text-data-sm text-text-label uppercase tracking-wider whitespace-nowrap"
+                        style={{ minWidth: col.w }}
+                      >
+                        {col.label}
+                      </th>
+                    ))}
+                    <th className="w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {investments.map((inv, idx) => (
+                    <InvestmentRow
+                      key={idx}
+                      inv={inv}
+                      columns={columns}
+                      onUpdate={(field, value) => handleInvestmentUpdate(idx, field, value)}
+                      onRemove={() => handleRemoveInvestment(idx)}
+                    />
                   ))}
-                  <th className="w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {investments.map((inv, idx) => (
-                  <InvestmentRow
-                    key={idx}
-                    inv={inv}
-                    columns={columns}
-                    onUpdate={(field, value) => handleInvestmentUpdate(idx, field, value)}
-                    onRemove={() => handleRemoveInvestment(idx)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-border-subtle bg-surface-800">
+                    {columns.map((col, i) => {
+                      if (i === 0) return (
+                        <td key={col.key} className="px-2 py-2 font-mono text-data-sm text-text-label uppercase tracking-wider">
+                          Total
+                        </td>
+                      )
+                      if (col.key === 'costBasis') return (
+                        <td key={col.key} className="px-2 py-2 font-mono text-sm text-text-primary">
+                          {formatCurrency(totalCost, currency)}
+                        </td>
+                      )
+                      if (col.key === 'marketValue') return (
+                        <td key={col.key} className="px-2 py-2 font-mono text-sm text-text-primary">
+                          {formatCurrency(totalMV, currency)}
+                        </td>
+                      )
+                      return <td key={col.key} />
+                    })}
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )
+        })()}
       </section>
 
       {/* CTA */}
