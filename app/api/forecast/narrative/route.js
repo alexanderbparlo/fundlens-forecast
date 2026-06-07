@@ -43,7 +43,6 @@ function currency(v, cur = 'USD') {
 }
 
 function buildMacroUserMessage(fundType, results, manualFields) {
-  const { fund: cm } = { fund: results.currentMetrics }
   const cur = results.currency ?? 'USD'
   const fundLabel = FUND_TYPE_LABELS[fundType] ?? fundType
 
