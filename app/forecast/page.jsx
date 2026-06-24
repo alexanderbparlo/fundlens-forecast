@@ -156,6 +156,7 @@ export default function ForecastPage() {
         return (
           <ScenarioConfig
             fundType={fc.fundType}
+            initialConfig={fc.scenarioConfig}
             onConfirm={(config) => {
               fc.setScenarioConfig(config)
               fc.setStep('results')

@@ -98,9 +98,13 @@ function ScenarioInput({ value, onChange, step }) {
 
 // ── Macro scenario config ─────────────────────────────────────────────────────
 
-function MacroScenarioConfig({ fundType, onConfirm, onBack }) {
+function MacroScenarioConfig({ fundType, initialConfig, onConfirm, onBack }) {
   const fields = MACRO_FIELDS[fundType] ?? MACRO_FIELDS.pe
-  const [values, setValues] = useState({ ...DEFAULTS })
+  const [values, setValues] = useState(() =>
+    initialConfig?.type === 'macro'
+      ? { bear: initialConfig.bear, base: initialConfig.base, bull: initialConfig.bull }
+      : { ...DEFAULTS }
+  )
 
   const fundLabel = {
     pe:           'PE / Buyout',
@@ -227,9 +231,11 @@ function MacroScenarioConfig({ fundType, onConfirm, onBack }) {
 
 // ── Hedge fund stress test grid ───────────────────────────────────────────────
 
-function StressTestGrid({ onConfirm, onBack }) {
-  const [shocks, setShocks] = useState(
-    Object.fromEntries(STRESS_CATEGORIES.map(c => [c.key, c.default]))
+function StressTestGrid({ initialConfig, onConfirm, onBack }) {
+  const [shocks, setShocks] = useState(() =>
+    initialConfig?.type === 'stress'
+      ? { ...initialConfig.shocks }
+      : Object.fromEntries(STRESS_CATEGORIES.map(c => [c.key, c.default]))
   )
 
   function update(key, value) {
@@ -317,9 +323,9 @@ function StressTestGrid({ onConfirm, onBack }) {
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
-export function ScenarioConfig({ fundType, onConfirm, onBack }) {
+export function ScenarioConfig({ fundType, initialConfig, onConfirm, onBack }) {
   if (fundType === 'hedge-fund') {
-    return <StressTestGrid onConfirm={onConfirm} onBack={onBack} />
+    return <StressTestGrid initialConfig={initialConfig} onConfirm={onConfirm} onBack={onBack} />
   }
-  return <MacroScenarioConfig fundType={fundType} onConfirm={onConfirm} onBack={onBack} />
+  return <MacroScenarioConfig fundType={fundType} initialConfig={initialConfig} onConfirm={onConfirm} onBack={onBack} />
 }
